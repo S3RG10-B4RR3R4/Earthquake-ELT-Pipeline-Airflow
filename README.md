@@ -1,5 +1,21 @@
 # 🌍 Earthquake ELT Pipeline for Social Impact Analysis
 
+<div align="center">
+
+![Python](https://img.shields.io/badge/Python-3.10-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Apache Airflow](https://img.shields.io/badge/Apache%20Airflow-2.7.3-017CEE?style=for-the-badge&logo=apacheairflow&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-20.10+-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Pandas](https://img.shields.io/badge/Pandas-2.1.3-150458?style=for-the-badge&logo=pandas&logoColor=white)
+![Plotly](https://img.shields.io/badge/Plotly-5.18.0-3F4F75?style=for-the-badge&logo=plotly&logoColor=white)
+
+[![License](https://img.shields.io/badge/License-Educational-green?style=for-the-badge)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)](https://github.com/S3RG10-B4RR3R4)
+
+</div>
+
+---
+
 A comprehensive ELT (Extract-Load-Transform) data pipeline built with Apache Airflow for analyzing earthquake data in Mexico, demonstrating the power of modern data engineering for disaster preparedness and policy-making.
 
 ## 📋 Table of Contents
@@ -12,11 +28,9 @@ A comprehensive ELT (Extract-Load-Transform) data pipeline built with Apache Air
 - [Project Structure](#project-structure)
 - [ELT Pipeline Explanation](#elt-pipeline-explanation)
 - [Dashboard Features](#dashboard-features)
-- [Screenshots](#screenshots)
 - [Development](#development)
 - [Troubleshooting](#troubleshooting)
 - [Author](#author)
-- [License](#license)
 
 ## 🎯 Project Overview
 
@@ -230,20 +244,34 @@ graph LR
 
 ## 🛠️ Technology Stack
 
-| Category | Technology | Version | Purpose |
-|----------|-----------|---------|---------|
-| **Orchestration** | Apache Airflow | 2.7.3 | Workflow management & scheduling |
-| **Database** | PostgreSQL | 13 | Data warehouse & transformations |
-| **Data Processing** | Pandas | 2.1.3 | Data manipulation |
-| **Storage Format** | Parquet | - | Efficient columnar storage |
-| **Visualization** | Dash | 2.14.2 | Interactive dashboard |
-| **Plotting** | Plotly | 5.18.0 | Data visualizations |
-| **Containerization** | Docker | 20.10+ | Container orchestration |
-| **Language** | Python | 3.10 | Primary development language |
+<div align="center">
+
+| Technology | Version | Purpose | Badge |
+|:----------:|:-------:|:-------:|:-----:|
+| **Python** | 3.10 | Primary Language | ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white) |
+| **Apache Airflow** | 2.7.3 | Workflow Orchestration | ![Airflow](https://img.shields.io/badge/Airflow-017CEE?logo=apacheairflow&logoColor=white) |
+| **PostgreSQL** | 13 | Data Warehouse | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white) |
+| **Docker** | 20.10+ | Containerization | ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white) |
+| **Pandas** | 2.1.3 | Data Processing | ![Pandas](https://img.shields.io/badge/Pandas-150458?logo=pandas&logoColor=white) |
+| **Dash** | 2.14.2 | Dashboard Framework | ![Dash](https://img.shields.io/badge/Dash-008DE4?logo=plotly&logoColor=white) |
+| **Plotly** | 5.18.0 | Data Visualization | ![Plotly](https://img.shields.io/badge/Plotly-3F4F75?logo=plotly&logoColor=white) |
+| **Parquet** | - | Storage Format | ![Parquet](https://img.shields.io/badge/Parquet-50ABF1?logo=apache&logoColor=white) |
+| **SQLAlchemy** | 1.4.50 | ORM & DB Connection | ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?logo=sqlalchemy&logoColor=white) |
+
+</div>
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
+<div align="center">
+
+![Docker](https://img.shields.io/badge/Docker-Required-2496ED?style=flat-square&logo=docker&logoColor=white)
+![RAM](https://img.shields.io/badge/RAM-4GB+-orange?style=flat-square)
+![Disk](https://img.shields.io/badge/Disk-10GB+-yellow?style=flat-square)
+
+</div>
+
 - Docker Desktop 20.10+ installed
 - At least 4GB RAM available
 - 10GB free disk space
@@ -253,7 +281,7 @@ graph LR
 
 ```bash
 # 1. Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/S3RG10-B4RR3R4/earthquake-elt-pipeline.git
 cd earthquake-elt-pipeline
 
 # 2. Place your CSV file
@@ -273,11 +301,15 @@ The script will automatically:
 
 ### Access Points
 
+<div align="center">
+
 | Service | URL | Credentials |
-|---------|-----|-------------|
-| **Airflow UI** | http://localhost:8080 | admin / admin |
-| **Dashboard** | http://localhost:8050 | No auth required |
-| **PostgreSQL** | localhost:5432 | dwuser / dwpassword |
+|:-------:|:---:|:-----------:|
+| 🌐 **Airflow UI** | http://localhost:8080 | `admin` / `admin` |
+| 📊 **Dashboard** | http://localhost:8050 | No auth required |
+| 🗄️ **PostgreSQL** | `localhost:5432` | `dwuser` / `dwpassword` |
+
+</div>
 
 ### First Run
 
@@ -293,30 +325,30 @@ The script will automatically:
 
 ```
 earthquake-elt-pipeline/
-├── dags/
+├── 🗂️ dags/
 │   └── earthquake_elt_dag.py          # Main ELT pipeline DAG
-├── dashboard/
+├── 📊 dashboard/
 │   └── app.py                          # Dash dashboard application
-├── data/
+├── 💾 data/
 │   ├── raw/                            # Raw Parquet files (partitioned)
 │   ├── analytics/                      # Transformed Parquet files
 │   └── Sismos.csv                      # Source data (place here)
-├── config/
+├── ⚙️ config/
 │   ├── init_db.sql                     # Database initialization script
 │   └── setup_airflow_connection.sh    # Airflow connection setup
-├── docs/
+├── 📚 docs/
 │   ├── JUSTIFICATION.md                # Social impact justification
 │   ├── SETUP.md                        # Detailed setup guide
 │   └── screenshots/                    # Project screenshots
-├── logs/                               # Airflow logs
-├── plugins/                            # Custom Airflow plugins
-├── docker-compose.yml                  # Multi-container orchestration
-├── Dockerfile                          # Custom Airflow image
-├── requirements.txt                    # Python dependencies
-├── deploy.sh                           # Automated deployment script
-├── .env                                # Environment variables
-├── .gitignore                          # Git ignore rules
-└── README.md                           # This file
+├── 📝 logs/                            # Airflow logs
+├── 🔌 plugins/                         # Custom Airflow plugins
+├── 🐳 docker-compose.yml               # Multi-container orchestration
+├── 🐳 Dockerfile                       # Custom Airflow image
+├── 📦 requirements.txt                 # Python dependencies
+├── 🚀 deploy.sh                        # Automated deployment script
+├── 🔐 .env                             # Environment variables
+├── 🚫 .gitignore                       # Git ignore rules
+└── 📖 README.md                        # This file
 ```
 
 ## 🔄 ELT Pipeline Explanation
@@ -341,13 +373,17 @@ graph LR
     style B2 fill:#ccffcc
 ```
 
+<div align="center">
+
 | Aspect | ETL | ELT |
-|--------|-----|-----|
+|:------:|:---:|:---:|
 | **Transform Location** | Application layer (Python) | Database layer (SQL) |
-| **Raw Data** | Not preserved | Preserved in raw tables |
-| **Performance** | Limited by app resources | Leverages database power |
-| **Flexibility** | Re-extract for new transforms | Transform from existing raw |
+| **Raw Data** | ❌ Not preserved | ✅ Preserved in raw tables |
+| **Performance** | ⚠️ Limited by app resources | ⚡ Leverages database power |
+| **Flexibility** | 🔄 Re-extract for new transforms | ♻️ Transform from existing raw |
 | **Best For** | Small datasets, legacy systems | Large datasets, modern warehouses |
+
+</div>
 
 ### Why ELT for Earthquakes?
 
@@ -359,7 +395,7 @@ graph LR
 
 ### Pipeline Stages
 
-#### Stage 1: Extract
+#### Stage 1: Extract 📥
 ```python
 # Read CSV and partition by batch
 df = pd.read_csv('Sismos.csv')
@@ -367,14 +403,14 @@ batch_id = datetime.now().strftime('%Y%m%d_%H%M%S')
 df.to_parquet(f'raw/earthquakes_{batch_id}.parquet')
 ```
 
-#### Stage 2: Load Raw (Key ELT Principle!)
+#### Stage 2: Load Raw 💾 (Key ELT Principle!)
 ```python
 # Load data EXACTLY as it comes - NO transformation
 # All columns remain as TEXT to preserve original format
 df.to_sql('raw_earthquakes', engine, if_exists='append')
 ```
 
-#### Stage 3: Transform (In-Database SQL)
+#### Stage 3: Transform 🔄 (In-Database SQL)
 ```sql
 -- Clean and transform INSIDE PostgreSQL
 INSERT INTO analytics_earthquakes
@@ -413,10 +449,10 @@ WHERE batch_id = '20250127_143000';
 
 ```mermaid
 graph LR
-    A[Analytics Layer] --> B[Total Earthquakes]
-    A --> C[Avg Magnitude]
-    A --> D[Significant Events]
-    A --> E[Max Magnitude]
+    A[Analytics Layer] --> B[📊 Total Earthquakes]
+    A --> C[📈 Avg Magnitude]
+    A --> D[⚠️ Significant Events]
+    A --> E[🔥 Max Magnitude]
     
     style B fill:#3b82f6
     style C fill:#f59e0b
@@ -426,11 +462,11 @@ graph LR
 
 ### Visualizations
 
-1. **Magnitude Distribution**: Bar chart categorizing earthquakes by intensity
-2. **Regional Analysis**: Horizontal bar chart of top 10 seismic regions
-3. **Temporal Patterns**: Line chart showing earthquake frequency over years
-4. **Geographic Map**: Interactive Mapbox visualization with magnitude/location
-5. **Depth Analysis**: Pie chart of shallow/intermediate/deep earthquakes
+1. **Magnitude Distribution** 📊: Bar chart categorizing earthquakes by intensity
+2. **Regional Analysis** 🗺️: Horizontal bar chart of top 10 seismic regions
+3. **Temporal Patterns** 📈: Line chart showing earthquake frequency over years
+4. **Geographic Map** 🌍: Interactive Mapbox visualization with magnitude/location
+5. **Depth Analysis** 🎯: Pie chart of shallow/intermediate/deep earthquakes
 
 ### Interactive Features
 - 🎚️ **Magnitude Range Slider**: Filter by earthquake intensity
@@ -444,26 +480,6 @@ The dashboard automatically generates insights:
 - Average depth patterns (relates to surface impact)
 - Significant event detection (magnitude ≥5.0 or depth <50km)
 - Policy recommendations based on patterns
-
-## 📸 Screenshots
-
-### Airflow DAG Execution
-![Airflow Graph View](docs/screenshots/airflow_graph.png)
-*ELT pipeline showing Extract → Load → Transform flow*
-
-### Raw vs Analytics Tables
-![Database Tables](docs/screenshots/database_comparison.png)
-*Raw table (TEXT) vs Analytics table (typed & enriched)*
-
-### Interactive Dashboard
-![Dashboard Overview](docs/screenshots/dashboard_overview.png)
-*Real-time seismic data visualization*
-
-### Regional Analysis
-![Regional Chart](docs/screenshots/regional_analysis.png)
-*Most active seismic regions in Mexico*
-
-> **Note**: Place your screenshots in `docs/screenshots/` directory
 
 ## 🔧 Development
 
@@ -756,25 +772,25 @@ docker system df
    - [PostgreSQL Docs](https://www.postgresql.org/docs/)
    - [Dash Documentation](https://dash.plotly.com/)
 
-4. **Report issues**:
-   - Include error logs
-   - Describe steps to reproduce
-   - Mention your OS and Docker version
-
 ## 👤 Author
 
-**S3RG10-B4RR3R4**
+<div align="center">
 
-- GitHub: [@S3RG10-B4RR3R4](https://github.com/S3RG10-B4RR3R4)
-- Project: Earthquake ELT Pipeline for Social Impact
-- Purpose: Educational project demonstrating modern data engineering for disaster preparedness
+### **S3RG10-B4RR3R4**
+
+[![GitHub](https://img.shields.io/badge/GitHub-S3RG10--B4RR3R4-181717?style=for-the-badge&logo=github)](https://github.com/S3RG10-B4RR3R4)
+[![Project](https://img.shields.io/badge/Project-Earthquake%20ELT-blue?style=for-the-badge&logo=apacheairflow)](https://github.com/S3RG10-B4RR3R4/earthquake-elt-pipeline)
+
+</div>
+
+**Project Purpose**: Educational demonstration of modern data engineering for disaster preparedness
 
 ### Project Context
 This project was developed as part of a data engineering course focused on:
-- ELT pipeline design and implementation
-- Apache Airflow orchestration
-- Social and environmental impact through data
-- Modern data visualization techniques
+- ✅ ELT pipeline design and implementation
+- ✅ Apache Airflow orchestration
+- ✅ Social and environmental impact through data
+- ✅ Modern data visualization techniques
 
 ## 📚 References
 
@@ -824,6 +840,14 @@ This project demonstrates:
 
 ---
 
+<div align="center">
+
 **Built with ❤️ for disaster preparedness and social impact**
 
-**Made by S3RG10-B4RR3R4 | 2025**
+**Made by [S3RG10-B4RR3R4](https://github.com/S3RG10-B4RR3R4) | 2025**
+
+![Seismic](https://img.shields.io/badge/🌍-Seismic%20Analysis-green?style=for-the-badge)
+![Impact](https://img.shields.io/badge/💚-Social%20Impact-blue?style=for-the-badge)
+![Data](https://img.shields.io/badge/📊-Data%20Engineering-orange?style=for-the-badge)
+
+</div>
