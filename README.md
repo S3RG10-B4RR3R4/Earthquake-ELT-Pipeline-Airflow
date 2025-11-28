@@ -2,6 +2,8 @@
 
 A comprehensive ELT (Extract-Load-Transform) data pipeline built with Apache Airflow for analyzing earthquake data in Mexico, demonstrating the power of modern data engineering for disaster preparedness and policy-making.
 
+![Project Banner](docs/screenshots/banner.png)
+
 ## 📋 Table of Contents
 
 - [Project Overview](#project-overview)
@@ -12,8 +14,11 @@ A comprehensive ELT (Extract-Load-Transform) data pipeline built with Apache Air
 - [Project Structure](#project-structure)
 - [ELT Pipeline Explanation](#elt-pipeline-explanation)
 - [Dashboard Features](#dashboard-features)
+- [Screenshots](#screenshots)
 - [Development](#development)
 - [Troubleshooting](#troubleshooting)
+- [Author](#author)
+- [License](#license)
 
 ## 🎯 Project Overview
 
@@ -50,333 +55,777 @@ Mexico is located in one of the most seismically active regions in the world. Un
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────┐
-│  CSV Data       │
-│  (Sismos.csv)   │
-└────────┬────────┘
-         │ EXTRACT
-         ▼
-┌─────────────────┐
-│  Raw Data       │
-│  (Parquet)      │
-└────────┬────────┘
-         │ LOAD (No Transform!)
-         ▼
-┌─────────────────┐
-│  PostgreSQL     │
-│  raw_earthquakes│ ◄─── Immutable raw data
-└────────┬────────┘
-         │ TRANSFORM (In-Database SQL)
-         ▼
-┌─────────────────┐
-│  PostgreSQL     │
-│analytics_earth..│ ◄─── Cleaned & enriched
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Dash Dashboard │
-│  (Visualizations)│
-└─────────────────┘
+### System Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Data Sources"
+        A[CSV File<br/>Sismos.csv]
+    end
+    
+    subgraph "Airflow Orchestration"
+        B[Extract Task<br/>Python]
+        C[Load Raw Task<br/>Python]
+        D[Validate Task<br/>Python]
+        E[Transform Task<br/>SQL]
+        F[Aggregate Task<br/>SQL]
+        G[Export Task<br/>Python]
+    end
+    
+    subgraph "Storage Layer"
+        H[(Raw Data<br/>Parquet Files)]
+        I[(PostgreSQL<br/>raw_earthquakes)]
+        J[(PostgreSQL<br/>analytics_earthquakes)]
+        K[(PostgreSQL<br/>earthquake_statistics)]
+        L[(Analytics Data<br/>Parquet Files)]
+    end
+    
+    subgraph "Visualization"
+        M[Dash Dashboard<br/>Interactive UI]
+    end
+    
+    A -->|Read| B
+    B -->|Save| H
+    H -->|Load Raw| C
+    C -->|Insert No Transform| I
+    I -->|Validate| D
+    D -->|SQL Transform| E
+    E -->|Clean & Enrich| J
+    J -->|Aggregate| F
+    F -->|Calculate KPIs| K
+    J -->|Export| G
+    G -->|Parquet| L
+    L -->|Read| M
+    J -->|Query| M
+    K -->|Query| M
+    
+    style A fill:#e1f5ff
+    style I fill:#fff4e1
+    style J fill:#e8f5e9
+    style M fill:#f3e5f5
 ```
 
-### Data Flow
-1. **Airflow Scheduler** triggers DAG daily
-2. **Extract Task** reads CSV and saves to Parquet
-3. **Load Task** inserts raw data into PostgreSQL (no transformation)
-4. **Validate Task** ensures data integrity
-5. **Transform Tasks** clean and enrich data using SQL
-6. **Export Task** creates Parquet files for dashboard
-7. **Dashboard** reads from analytics layer only
+### ELT Data Flow
+
+```mermaid
+sequenceDiagram
+    participant CSV as CSV File
+    participant Airflow as Airflow Scheduler
+    participant Raw as Raw Layer
+    participant DW as Data Warehouse
+    participant Analytics as Analytics Layer
+    participant Dashboard as Dashboard
+    
+    Note over Airflow: Daily Schedule Triggered
+    
+    Airflow->>CSV: 1. Extract Data
+    CSV-->>Airflow: Raw Records
+    
+    Airflow->>Raw: 2. Save to Parquet
+    Raw-->>Airflow: Batch ID
+    
+    Airflow->>DW: 3. Load Raw (NO TRANSFORM!)
+    Note over DW: raw_earthquakes table<br/>All columns as TEXT
+    DW-->>Airflow: Records Loaded
+    
+    Airflow->>DW: 4. Validate Count
+    DW-->>Airflow: Validation OK
+    
+    Airflow->>DW: 5. Transform (SQL)
+    Note over DW: Clean, Type Cast,<br/>Feature Engineering
+    DW->>Analytics: Create analytics_earthquakes
+    
+    Airflow->>DW: 6. Aggregate (SQL)
+    DW->>Analytics: Create earthquake_statistics
+    
+    Airflow->>Analytics: 7. Export to Parquet
+    Analytics-->>Airflow: Export Complete
+    
+    Dashboard->>Analytics: 8. Query Data
+    Analytics-->>Dashboard: Display Insights
+```
+
+### Database Schema
+
+```mermaid
+erDiagram
+    RAW_EARTHQUAKES ||--o{ ANALYTICS_EARTHQUAKES : transforms_to
+    ANALYTICS_EARTHQUAKES ||--o{ EARTHQUAKE_STATISTICS : aggregates_to
+    
+    RAW_EARTHQUAKES {
+        serial id PK
+        text fecha_utc
+        text hora_utc
+        text magnitud
+        text latitud
+        text longitud
+        text profundidad
+        text referencia_localizacion
+        text fecha_local
+        text hora_local
+        text estatus
+        timestamp loaded_at
+        text batch_id
+    }
+    
+    ANALYTICS_EARTHQUAKES {
+        serial id PK
+        date earthquake_date
+        timestamp earthquake_datetime
+        numeric magnitude
+        numeric latitude
+        numeric longitude
+        numeric depth_km
+        text location_reference
+        text status
+        integer year
+        integer month
+        text day_of_week
+        integer hour_of_day
+        text magnitude_category
+        text depth_category
+        text region
+        boolean is_significant
+        timestamp created_at
+        text batch_id
+    }
+    
+    EARTHQUAKE_STATISTICS {
+        serial id PK
+        date calculation_date
+        integer total_earthquakes
+        numeric avg_magnitude
+        numeric max_magnitude
+        numeric min_magnitude
+        numeric avg_depth
+        integer significant_count
+        jsonb by_magnitude_category
+        jsonb by_region
+        jsonb by_month
+        timestamp created_at
+    }
+```
+
+### Airflow DAG Structure
+
+```mermaid
+graph LR
+    A[extract_data] --> B[load_raw_data]
+    B --> C[validate_raw_data]
+    C --> D[transform_group]
+    
+    subgraph transform_group
+        E[transform_to_analytics]
+        F[calculate_statistics]
+        E --> F
+    end
+    
+    D --> G[export_to_parquet]
+    
+    style A fill:#bbdefb
+    style B fill:#c8e6c9
+    style C fill:#fff9c4
+    style E fill:#ffccbc
+    style F fill:#f8bbd0
+    style G fill:#d1c4e9
+```
 
 ## 🛠️ Technology Stack
 
-- **Orchestration**: Apache Airflow 2.7.3
-- **Database**: PostgreSQL 13
-- **Data Processing**: Pandas, SQLAlchemy
-- **Storage**: Parquet (columnar format)
-- **Dashboard**: Dash, Plotly
-- **Containerization**: Docker, Docker Compose
-- **Language**: Python 3.10
+| Category | Technology | Version | Purpose |
+|----------|-----------|---------|---------|
+| **Orchestration** | Apache Airflow | 2.7.3 | Workflow management & scheduling |
+| **Database** | PostgreSQL | 13 | Data warehouse & transformations |
+| **Data Processing** | Pandas | 2.1.3 | Data manipulation |
+| **Storage Format** | Parquet | - | Efficient columnar storage |
+| **Visualization** | Dash | 2.14.2 | Interactive dashboard |
+| **Plotting** | Plotly | 5.18.0 | Data visualizations |
+| **Containerization** | Docker | 20.10+ | Container orchestration |
+| **Language** | Python | 3.10 | Primary development language |
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Docker and Docker Compose installed
+- Docker Desktop 20.10+ installed
 - At least 4GB RAM available
-- Git (for cloning)
+- 10GB free disk space
+- Git (optional)
 
-### Step 1: Clone and Setup
+### Installation
+
 ```bash
-# Clone repository
+# 1. Clone the repository
 git clone <your-repo-url>
 cd earthquake-elt-pipeline
 
-# Create data directories
-mkdir -p data/raw data/analytics
-
-# Place your Sismos.csv in the data/ folder
+# 2. Place your CSV file
 cp /path/to/Sismos.csv data/
+
+# 3. Run deployment script
+chmod +x deploy.sh
+./deploy.sh
 ```
 
-### Step 2: Start Services
-```bash
-# Build and start all services
-docker-compose up -d
+The script will automatically:
+- ✅ Check prerequisites
+- ✅ Build Docker images
+- ✅ Start all services
+- ✅ Initialize database
+- ✅ Configure Airflow connections
 
-# Wait for initialization (2-3 minutes)
-docker-compose logs -f airflow-init
-```
+### Access Points
 
-### Step 3: Access Applications
-- **Airflow UI**: http://localhost:8080
-  - Username: `admin`
-  - Password: `admin`
-- **Dashboard**: http://localhost:8050
-- **PostgreSQL**: `localhost:5432`
-  - User: `dwuser`
-  - Password: `dwpassword`
-  - Database: `earthquake_dw`
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| **Airflow UI** | http://localhost:8080 | admin / admin |
+| **Dashboard** | http://localhost:8050 | No auth required |
+| **PostgreSQL** | localhost:5432 | dwuser / dwpassword |
 
-### Step 4: Run the Pipeline
-1. Open Airflow UI (http://localhost:8080)
-2. Enable the `earthquake_elt_pipeline` DAG
-3. Click "Trigger DAG" to run manually
-4. Monitor execution in Graph or Tree view
-5. Once complete, check the dashboard at http://localhost:8050
+### First Run
 
-### Step 5: Stop Services
-```bash
-# Stop all services
-docker-compose down
-
-# Remove all data (careful!)
-docker-compose down -v
-```
+1. Open Airflow UI: http://localhost:8080
+2. Login with `admin` / `admin`
+3. Find DAG: `earthquake_elt_pipeline`
+4. Toggle to enable the DAG
+5. Click "Trigger DAG" (▶ button)
+6. Wait for completion (all tasks green ✓)
+7. Open Dashboard: http://localhost:8050
 
 ## 📁 Project Structure
 
 ```
 earthquake-elt-pipeline/
 ├── dags/
-│   └── earthquake_elt_dag.py      # Main ELT pipeline DAG
+│   └── earthquake_elt_dag.py          # Main ELT pipeline DAG
 ├── dashboard/
-│   └── app.py                      # Dash dashboard application
+│   └── app.py                          # Dash dashboard application
 ├── data/
-│   ├── raw/                        # Raw Parquet files (partitioned)
-│   ├── analytics/                  # Transformed Parquet files
-│   └── Sismos.csv                  # Source data (place here)
+│   ├── raw/                            # Raw Parquet files (partitioned)
+│   ├── analytics/                      # Transformed Parquet files
+│   └── Sismos.csv                      # Source data (place here)
 ├── config/
-│   └── init_db.sql                 # Database initialization
+│   ├── init_db.sql                     # Database initialization script
+│   └── setup_airflow_connection.sh    # Airflow connection setup
 ├── docs/
-│   ├── JUSTIFICATION.md            # Social impact justification
-│   └── SETUP.md                    # Detailed setup guide
-├── logs/                           # Airflow logs
-├── plugins/                        # Custom Airflow plugins
-├── docker-compose.yml              # Multi-container orchestration
-├── Dockerfile                      # Custom Airflow image
-├── requirements.txt                # Python dependencies
-├── .env                            # Environment variables
-└── README.md                       # This file
+│   ├── JUSTIFICATION.md                # Social impact justification
+│   ├── SETUP.md                        # Detailed setup guide
+│   └── screenshots/                    # Project screenshots
+├── logs/                               # Airflow logs
+├── plugins/                            # Custom Airflow plugins
+├── docker-compose.yml                  # Multi-container orchestration
+├── Dockerfile                          # Custom Airflow image
+├── requirements.txt                    # Python dependencies
+├── deploy.sh                           # Automated deployment script
+├── .env                                # Environment variables
+├── .gitignore                          # Git ignore rules
+└── README.md                           # This file
 ```
 
 ## 🔄 ELT Pipeline Explanation
 
 ### What is ELT?
-**ELT** (Extract-Load-Transform) differs from **ETL** (Extract-Transform-Load) in the order of operations:
 
-| Step | ETL | ELT |
-|------|-----|-----|
-| Extract | ✅ Get data | ✅ Get data |
-| Transform | ✅ Clean BEFORE load | ❌ NOT here |
-| Load | ✅ Load clean data | ✅ Load RAW data |
-| Transform | ❌ Already done | ✅ Transform AFTER load |
+**ELT** (Extract-Load-Transform) differs from **ETL** (Extract-Transform-Load):
+
+```mermaid
+graph LR
+    subgraph "ETL Process"
+        A1[Extract] --> A2[Transform<br/>Before Load]
+        A2 --> A3[Load<br/>Clean Data]
+    end
+    
+    subgraph "ELT Process"
+        B1[Extract] --> B2[Load<br/>Raw Data]
+        B2 --> B3[Transform<br/>After Load]
+    end
+    
+    style A2 fill:#ffcccc
+    style B2 fill:#ccffcc
+```
+
+| Aspect | ETL | ELT |
+|--------|-----|-----|
+| **Transform Location** | Application layer (Python) | Database layer (SQL) |
+| **Raw Data** | Not preserved | Preserved in raw tables |
+| **Performance** | Limited by app resources | Leverages database power |
+| **Flexibility** | Re-extract for new transforms | Transform from existing raw |
+| **Best For** | Small datasets, legacy systems | Large datasets, modern warehouses |
 
 ### Why ELT for Earthquakes?
 
-1. **Immutable Raw Data**
-   - Original seismic readings must never be modified
-   - Enables re-analysis with improved algorithms
-   - Provides audit trail for scientific research
-
-2. **Performance**
-   - PostgreSQL can transform millions of rows faster than Python
-   - In-database aggregations leverage indexes and query optimization
-   - Parallel processing within the database
-
-3. **Flexibility**
-   - New transformations don't require re-extraction
-   - Data scientists can experiment without affecting raw data
-   - Easy to add new features or fix transformation bugs
-
-4. **Scalability**
-   - Raw data can be partitioned by date
-   - Incremental loads only process new data
-   - Analytics layer can be rebuilt from raw at any time
+1. **Immutable Raw Data**: Original seismic readings preserved for audit and reanalysis
+2. **Performance**: PostgreSQL processes millions of rows faster than Python
+3. **Flexibility**: New transformations don't require re-extraction
+4. **Scalability**: Partitioned raw data, incremental loads
+5. **Scientific Integrity**: Raw measurements remain unchanged
 
 ### Pipeline Stages
 
-#### 1. Extract (Python)
+#### Stage 1: Extract
 ```python
-# Read CSV and save to Parquet
+# Read CSV and partition by batch
 df = pd.read_csv('Sismos.csv')
+batch_id = datetime.now().strftime('%Y%m%d_%H%M%S')
 df.to_parquet(f'raw/earthquakes_{batch_id}.parquet')
 ```
 
-#### 2. Load (Python → PostgreSQL)
+#### Stage 2: Load Raw (Key ELT Principle!)
 ```python
-# Load raw data WITHOUT transformation
+# Load data EXACTLY as it comes - NO transformation
+# All columns remain as TEXT to preserve original format
 df.to_sql('raw_earthquakes', engine, if_exists='append')
-# All columns remain as TEXT - no type conversion!
 ```
 
-#### 3. Transform (SQL in PostgreSQL)
+#### Stage 3: Transform (In-Database SQL)
 ```sql
--- Clean and transform INSIDE the database
+-- Clean and transform INSIDE PostgreSQL
 INSERT INTO analytics_earthquakes
 SELECT 
     TO_DATE(fecha_utc, 'DD/MM/YYYY') as earthquake_date,
-    CAST(magnitud AS NUMERIC) as magnitude,
+    CAST(magnitud AS NUMERIC(3,1)) as magnitude,
     -- Feature engineering
     CASE 
+        WHEN magnitude >= 7.0 THEN 'Great'
         WHEN magnitude >= 6.0 THEN 'Major'
-        WHEN magnitude >= 4.0 THEN 'Moderate'
-        ELSE 'Minor'
+        WHEN magnitude >= 5.0 THEN 'Strong'
+        ELSE 'Moderate'
     END as magnitude_category
-FROM raw_earthquakes;
+FROM raw_earthquakes
+WHERE batch_id = '20250127_143000';
 ```
 
-### Key Features
+### Error Handling & Scaling Features
 
-✅ **Error Handling**
-- 3 automatic retries with exponential backoff
-- Validation tasks to ensure data quality
-- Comprehensive logging
+#### ✅ Error Handling
+- **Automatic Retries**: 3 retries with exponential backoff
+- **Validation Tasks**: Verify record counts match
+- **Comprehensive Logging**: Track every operation
+- **Alerts**: Can be configured for failures
 
-✅ **Scaling**
-- Parquet format for efficient storage
-- Partitioned raw data by batch
-- In-database SQL transformations
-- Indexes on key columns
-
-✅ **Scheduling**
-- Daily execution (@daily schedule)
-- Catchup disabled for production
-- Configurable intervals
+#### ✅ Scaling Strategies
+- **Parquet Format**: 50-80% smaller than CSV, columnar for analytics
+- **Partitioning**: Raw data partitioned by batch/date
+- **Incremental Loads**: Only process new data
+- **SQL Transformations**: Leverage database indexes and optimization
+- **Parallel Tasks**: Airflow can run multiple tasks concurrently
 
 ## 📊 Dashboard Features
 
-### KPIs
-- **Total Earthquakes**: Historical count
-- **Average Magnitude**: Central tendency
-- **Significant Events**: High-risk earthquakes (≥5.0 magnitude)
-- **Maximum Magnitude**: Highest recorded
+### Key Performance Indicators (KPIs)
+
+```mermaid
+graph LR
+    A[Analytics Layer] --> B[Total Earthquakes]
+    A --> C[Avg Magnitude]
+    A --> D[Significant Events]
+    A --> E[Max Magnitude]
+    
+    style B fill:#3b82f6
+    style C fill:#f59e0b
+    style D fill:#ef4444
+    style E fill:#10b981
+```
 
 ### Visualizations
-1. **Magnitude Distribution**: Bar chart showing earthquake intensity categories
-2. **Regional Analysis**: Top 10 most seismically active regions
-3. **Temporal Patterns**: Time series of earthquake frequency
-4. **Geographic Map**: Interactive map with magnitude/location
-5. **Depth Analysis**: Distribution by depth category
 
-### Filters
-- Magnitude range slider
-- Region multi-select dropdown
-- Auto-refresh every minute
+1. **Magnitude Distribution**: Bar chart categorizing earthquakes by intensity
+2. **Regional Analysis**: Horizontal bar chart of top 10 seismic regions
+3. **Temporal Patterns**: Line chart showing earthquake frequency over years
+4. **Geographic Map**: Interactive Mapbox visualization with magnitude/location
+5. **Depth Analysis**: Pie chart of shallow/intermediate/deep earthquakes
 
-### Insights
-- Most active regions
-- Depth patterns
-- Risk assessment recommendations
+### Interactive Features
+- 🎚️ **Magnitude Range Slider**: Filter by earthquake intensity
+- 🗺️ **Region Dropdown**: Multi-select regional filter
+- 🔄 **Auto-Refresh**: Updates every 60 seconds
+- 📊 **Hover Details**: Contextual information on chart hover
+
+### Insights Engine
+The dashboard automatically generates insights:
+- Most seismically active regions
+- Average depth patterns (relates to surface impact)
+- Significant event detection (magnitude ≥5.0 or depth <50km)
+- Policy recommendations based on patterns
+
+## 📸 Screenshots
+
+### Airflow DAG Execution
+![Airflow Graph View](docs/screenshots/airflow_graph.png)
+*ELT pipeline showing Extract → Load → Transform flow*
+
+### Raw vs Analytics Tables
+![Database Tables](docs/screenshots/database_comparison.png)
+*Raw table (TEXT) vs Analytics table (typed & enriched)*
+
+### Interactive Dashboard
+![Dashboard Overview](docs/screenshots/dashboard_overview.png)
+*Real-time seismic data visualization*
+
+### Regional Analysis
+![Regional Chart](docs/screenshots/regional_analysis.png)
+*Most active seismic regions in Mexico*
+
+> **Note**: Place your screenshots in `docs/screenshots/` directory
 
 ## 🔧 Development
 
-### Adding New Transformations
+### Adding Custom Transformations
 
-1. Edit `dags/earthquake_elt_dag.py`
-2. Add new SQL in `TRANSFORM_SQL` constant
-3. Raw data remains unchanged
-4. Test with `docker-compose restart airflow-scheduler`
+1. **Edit the DAG**:
+```python
+# In dags/earthquake_elt_dag.py
+TRANSFORM_SQL = """
+INSERT INTO analytics_earthquakes
+SELECT 
+    -- Add your new transformations here
+    CASE 
+        WHEN your_condition THEN 'Your_Category'
+    END as your_new_column
+FROM raw_earthquakes;
+"""
+```
 
-### Customizing Dashboard
+2. **Restart Scheduler**:
+```bash
+docker-compose restart airflow-scheduler
+```
 
-1. Edit `dashboard/app.py`
-2. Add new queries to fetch different aggregations
-3. Create new Plotly charts
-4. Restart: `docker-compose restart dashboard`
+3. **Trigger DAG**:
+- Open Airflow UI
+- Click "Trigger DAG"
+
+### Customizing the Dashboard
+
+1. **Edit Dashboard Code**:
+```python
+# In dashboard/app.py
+def fetch_custom_data():
+    query = """
+    SELECT custom_column 
+    FROM analytics_earthquakes
+    WHERE your_filter
+    """
+    return pd.read_sql(query, engine)
+```
+
+2. **Restart Dashboard**:
+```bash
+docker-compose restart dashboard
+```
 
 ### Database Access
 
 ```bash
-# Connect to PostgreSQL
+# PostgreSQL CLI
 docker-compose exec postgres psql -U dwuser -d earthquake_dw
 
 # View raw data
-SELECT * FROM raw_earthquakes LIMIT 10;
+\x  # Expanded display
+SELECT * FROM raw_earthquakes LIMIT 1;
 
-# View transformed data
-SELECT * FROM analytics_earthquakes LIMIT 10;
+# View analytics data
+SELECT 
+    earthquake_date,
+    magnitude,
+    magnitude_category,
+    region 
+FROM analytics_earthquakes 
+ORDER BY magnitude DESC 
+LIMIT 10;
 
 # Check statistics
-SELECT * FROM earthquake_statistics;
+SELECT * FROM earthquake_statistics ORDER BY calculation_date DESC LIMIT 1;
+```
+
+### Useful Commands
+
+```bash
+# View all services
+docker-compose ps
+
+# View logs
+docker-compose logs -f airflow-scheduler
+docker-compose logs -f dashboard
+
+# Restart specific service
+docker-compose restart airflow-webserver
+
+# Rebuild images
+docker-compose build --no-cache
+
+# Access container shell
+docker-compose exec airflow-webserver bash
+docker-compose exec postgres bash
+
+# Stop all services
+docker-compose down
+
+# Remove all data (CAREFUL!)
+docker-compose down -v
 ```
 
 ## 🐛 Troubleshooting
 
-### Airflow won't start
+### Common Issues and Solutions
+
+#### ❌ Issue 1: Port Already in Use
+
+**Error**: `Bind for 0.0.0.0:8080 failed: port is already allocated`
+
+**Solution**:
 ```bash
-# Check logs
-docker-compose logs airflow-webserver
+# macOS/Linux - Find and kill process
+lsof -i :8080
+kill -9 <PID>
+
+# Windows - Find and kill process
+netstat -ano | findstr :8080
+taskkill /PID <PID> /F
+
+# Or change port in docker-compose.yml
+# Edit: ports: "8081:8080"
+```
+
+#### ❌ Issue 2: Services Won't Start
+
+**Error**: `Container exits immediately`
+
+**Solution**:
+```bash
+# Check logs for specific service
+docker-compose logs postgres
 docker-compose logs airflow-scheduler
+
+# Common fixes:
+# 1. Increase Docker memory (Docker Desktop → Settings → Resources)
+# 2. Clean up and restart
+docker-compose down -v
+docker-compose up -d
+
+# 3. Rebuild images
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+#### ❌ Issue 3: Airflow Connection Error
+
+**Error**: `Connection 'earthquake_dw' doesn't exist`
+
+**Solution**:
+```bash
+# Recreate connection
+docker-compose exec airflow-webserver airflow connections add 'earthquake_dw' \
+    --conn-type 'postgres' \
+    --conn-login 'dwuser' \
+    --conn-password 'dwpassword' \
+    --conn-host 'postgres' \
+    --conn-port '5432' \
+    --conn-schema 'earthquake_dw'
+
+# Or run setup script
+bash config/setup_airflow_connection.sh
+```
+
+#### ❌ Issue 4: CSV File Not Found
+
+**Error**: `FileNotFoundError: /opt/airflow/data/Sismos.csv`
+
+**Solution**:
+```bash
+# Verify file location and name (case-sensitive!)
+ls -la data/Sismos.csv
+
+# Must be exactly: data/Sismos.csv
+
+# Check file permissions
+chmod 644 data/Sismos.csv
 
 # Restart services
 docker-compose restart
 ```
 
-### Dashboard shows no data
-```bash
-# Verify pipeline ran successfully
-# Check Airflow UI for task status
+#### ❌ Issue 5: Database Tables Not Created
 
-# Verify data in database
-docker-compose exec postgres psql -U dwuser -d earthquake_dw -c "SELECT COUNT(*) FROM analytics_earthquakes;"
+**Error**: `relation "raw_earthquakes" does not exist`
+
+**Solution**:
+```bash
+# Method 1: Recreate database
+docker-compose down -v
+docker-compose up -d
+
+# Method 2: Manually run init script
+docker-compose exec postgres psql -U postgres -d earthquake_dw -f /docker-entrypoint-initdb.d/init_db.sql
+
+# Verify tables exist
+docker-compose exec postgres psql -U dwuser -d earthquake_dw -c "\dt"
 ```
 
-### Database connection errors
-```bash
-# Check PostgreSQL is running
-docker-compose ps postgres
+#### ❌ Issue 6: Dashboard Shows No Data
 
-# Test connection
-docker-compose exec postgres pg_isready -U dwuser
+**Error**: Dashboard loads but charts are empty
+
+**Solution**:
+```bash
+# 1. Check if pipeline ran successfully
+# Open Airflow UI and verify all tasks are green
+
+# 2. Verify data in database
+docker-compose exec postgres psql -U dwuser -d earthquake_dw \
+    -c "SELECT COUNT(*) FROM analytics_earthquakes;"
+
+# 3. Check dashboard logs
+docker-compose logs dashboard
+
+# 4. Manually trigger DAG if not run yet
+# Airflow UI → earthquake_elt_pipeline → Trigger DAG
 ```
 
-### Performance issues
+#### ❌ Issue 7: Out of Memory (OOM)
+
+**Error**: `Container killed (OOM)`
+
+**Solution**:
 ```bash
-# Check resource usage
+# Check Docker memory allocation
 docker stats
 
-# Increase Docker memory allocation
-# Edit Docker Desktop settings → Resources → Memory
+# Increase Docker memory:
+# Docker Desktop → Settings → Resources → Memory → 6-8GB
+
+# Reduce Airflow parallelism in docker-compose.yml:
+environment:
+  AIRFLOW__CORE__PARALLELISM: 8
+  AIRFLOW__CORE__DAG_CONCURRENCY: 4
 ```
 
-## 📚 Additional Resources
+#### ❌ Issue 8: Slow Dashboard Performance
 
-- [Apache Airflow Documentation](https://airflow.apache.org/docs/)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [Dash Documentation](https://dash.plotly.com/)
-- [Parquet Format](https://parquet.apache.org/)
+**Symptoms**: Dashboard takes long to load or refresh
 
-## 👥 Contributors
+**Solution**:
+```bash
+# 1. Check data volume
+docker-compose exec postgres psql -U dwuser -d earthquake_dw \
+    -c "SELECT COUNT(*) FROM analytics_earthquakes;"
 
-- Data Engineering Team
-- Social Impact Analysis Group
+# 2. Add database indexes (if not exists)
+docker-compose exec postgres psql -U dwuser -d earthquake_dw -c "
+CREATE INDEX IF NOT EXISTS idx_analytics_date ON analytics_earthquakes(earthquake_date);
+CREATE INDEX IF NOT EXISTS idx_analytics_magnitude ON analytics_earthquakes(magnitude);
+"
+
+# 3. Limit dashboard query to recent data
+# Edit dashboard/app.py and add:
+# LIMIT 10000 to queries
+```
+
+### Health Check Commands
+
+```bash
+# ✅ Check all services are running
+docker-compose ps
+
+# ✅ Test PostgreSQL connection
+docker-compose exec postgres pg_isready -U dwuser
+
+# ✅ Test Airflow webserver
+curl http://localhost:8080/health
+
+# ✅ Test dashboard
+curl http://localhost:8050
+
+# ✅ Check disk space
+df -h
+
+# ✅ Check Docker resources
+docker system df
+```
+
+### Getting Help
+
+1. **Check logs first**:
+   ```bash
+   docker-compose logs -f
+   ```
+
+2. **Review documentation**:
+   - [SETUP.md](docs/SETUP.md) - Detailed setup guide
+   - [JUSTIFICATION.md](docs/JUSTIFICATION.md) - Project rationale
+
+3. **Common resources**:
+   - [Airflow Documentation](https://airflow.apache.org/docs/)
+   - [PostgreSQL Docs](https://www.postgresql.org/docs/)
+   - [Dash Documentation](https://dash.plotly.com/)
+
+4. **Report issues**:
+   - Include error logs
+   - Describe steps to reproduce
+   - Mention your OS and Docker version
+
+## 👤 Author
+
+**S3RG10-B4RR3R4**
+
+- GitHub: [@S3RG10-B4RR3R4](https://github.com/S3RG10-B4RR3R4)
+- Project: Earthquake ELT Pipeline for Social Impact
+- Purpose: Educational project demonstrating modern data engineering for disaster preparedness
+
+### Project Context
+This project was developed as part of a data engineering course focused on:
+- ELT pipeline design and implementation
+- Apache Airflow orchestration
+- Social and environmental impact through data
+- Modern data visualization techniques
+
+## 📚 References
+
+- **Seismic Data**: National Seismological Service of Mexico (SSN)
+- **ELT Best Practices**: Data Engineering community standards
+- **Disaster Preparedness**: CENAPRED (National Center for Disaster Prevention)
+- **Data Visualization**: Plotly and Dash documentation
+
+## 🤝 Contributing
+
+This is an educational project, but suggestions are welcome!
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
 ## 📄 License
 
-This project is for educational purposes.
+This project is for educational purposes. Feel free to use it for learning and academic projects.
+
+---
+
+## 🎓 Learning Outcomes
+
+By studying this project, you will understand:
+
+- ✅ **ELT vs ETL**: When and why to use each approach
+- ✅ **Apache Airflow**: DAG creation, task dependencies, scheduling
+- ✅ **Data Warehousing**: Raw vs analytics layers, SQL transformations
+- ✅ **Containerization**: Docker Compose for multi-service orchestration
+- ✅ **Data Visualization**: Building interactive dashboards with Dash
+- ✅ **Social Impact**: Using data engineering for real-world problems
+
+---
+
+## 🌟 Key Takeaways
+
+> **"In the face of natural disasters, data is not just numbers—it's lives saved, buildings protected, and communities made resilient."**
+
+This project demonstrates:
+1. **Technical Excellence**: Production-ready ELT pipeline with error handling and scaling
+2. **Social Responsibility**: Technology serving public safety and disaster preparedness
+3. **Best Practices**: Following industry standards for data engineering
+4. **Documentation**: Comprehensive guides for setup, usage, and troubleshooting
 
 ---
 
 **Built with ❤️ for disaster preparedness and social impact**
+
+**Made by S3RG10-B4RR3R4 | 2025**
