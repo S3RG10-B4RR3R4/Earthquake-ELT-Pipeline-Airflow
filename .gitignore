@@ -1,0 +1,39 @@
+# Airflow
+logs/
+airflow-webserver.pid
+airflow.db
+airflow.cfg
+unittests.cfg
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Data (except sample)
+data/raw/*
+data/analytics/*
+!data/raw/.gitkeep
+!data/analytics/.gitkeep
+*.csv
+*.parquet
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
