@@ -2,8 +2,6 @@
 
 A comprehensive ELT (Extract-Load-Transform) data pipeline built with Apache Airflow for analyzing earthquake data in Mexico, demonstrating the power of modern data engineering for disaster preparedness and policy-making.
 
-![Project Banner](docs/screenshots/banner.png)
-
 ## 📋 Table of Contents
 
 - [Project Overview](#project-overview)
